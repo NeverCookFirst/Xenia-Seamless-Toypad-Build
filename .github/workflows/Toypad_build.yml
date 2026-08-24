@@ -1,0 +1,11 @@
+name: Toypad Build
+
+on:
+  push:
+    branches: [toypad]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    name: Windows (x86-64)
+    uses: ./.github/workflows/Windows_x86.yml

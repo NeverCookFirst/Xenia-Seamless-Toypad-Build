@@ -17,6 +17,7 @@
 #include "xenia/kernel/util/shim_utils.h"
 
 #ifdef XE_PLATFORM_WIN32
+#include "xenia/hid/portal/emulated_toypad.h"
 #include "xenia/hid/portal/hardware_portal.h"
 #endif  // XE_PLATFORM_WIN32
 
@@ -24,6 +25,11 @@ namespace xe {
 namespace hid {
 
 DEFINE_bool(vibration, true, "Toggle controller vibration.", "HID");
+
+DEFINE_bool(toypad_emulation, true,
+            "Emulate the LEGO Dimensions ToyPad (with companion-app listener) "
+            "instead of passing through a physical portal via USB.",
+            "HID");
 
 DEFINE_double(left_stick_deadzone_percentage, 0.0,
               "Defines deadzone level for left stick. Allowed range [0.0-1.0].",
@@ -34,7 +40,11 @@ DEFINE_double(
 
 InputSystem::InputSystem(xe::ui::Window* window) : window_(window) {
 #ifdef XE_PLATFORM_WIN32
-  portal_ = std::make_unique<HardwarePortal>();
+  if (cvars::toypad_emulation) {
+    portal_ = std::make_unique<EmulatedToypad>();
+  } else {
+    portal_ = std::make_unique<HardwarePortal>();
+  }
 #endif  // XE_PLATFORM_WIN32
 }
 
@@ -127,6 +137,14 @@ X_RESULT InputSystem::GetState(uint32_t user_index, uint32_t flags,
       UpdateUsedSlot(driver, user_index, true);
       AdjustDeadzoneLevels(user_index, &out_state->gamepad);
 
+#ifdef XE_PLATFORM_WIN32
+      // While the companion app's figure picker overlay is open, its
+      // navigation input must not reach the game.
+      if (EmulatedToypad::IsPickerInputActive()) {
+        out_state->gamepad = {};
+      }
+#endif  // XE_PLATFORM_WIN32
+
       if (out_state->gamepad.buttons != 0) {
         last_used_slot = user_index;
       }
@@ -155,6 +173,13 @@ X_RESULT InputSystem::GetKeystroke(uint32_t user_index, uint32_t flags,
   SCOPE_profile_cpu_f("hid");
 
   std::vector<InputDriver*> filtered_drivers = FilterDrivers(flags);
+
+#ifdef XE_PLATFORM_WIN32
+  if (EmulatedToypad::IsPickerInputActive()) {
+    return filtered_drivers.empty() ? X_ERROR_DEVICE_NOT_CONNECTED
+                                    : X_ERROR_EMPTY;
+  }
+#endif  // XE_PLATFORM_WIN32
 
   bool any_connected = false;
   for (auto& driver : filtered_drivers) {

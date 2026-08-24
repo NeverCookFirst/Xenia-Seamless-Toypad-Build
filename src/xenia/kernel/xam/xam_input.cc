@@ -255,7 +255,16 @@ DECLARE_XAM_EXPORT1(XamUserGetDeviceContext, kInput, kStub);
 X_HRESULT_result_t XamInputNonControllerGetRawEx_entry(
     dword_t device_id, lpdword_t buffer_ptr, lpdword_t buffer_length_ptr,
     lpword_t state_ptr) {
+  static int logged_get_calls = 0;
+  if (logged_get_calls < 32) {
+    logged_get_calls++;
+    XELOGI("XamInputNonControllerGetRawEx: device_id={} len={}",
+           uint32_t(device_id),
+           buffer_length_ptr ? uint32_t(*buffer_length_ptr) : 0);
+  }
   if (device_id != 5 && device_id != 6) {
+    XELOGW("XamInputNonControllerGetRawEx: rejected device_id={}",
+           uint32_t(device_id));
     return X_ERROR_INVALID_PARAMETER;
   }
   if (!state_ptr || !buffer_length_ptr || !buffer_ptr) {
@@ -290,7 +299,15 @@ DECLARE_XAM_EXPORT1(XamInputNonControllerGetRawEx, kInput, kSketchy);
 X_HRESULT_result_t XamInputNonControllerSetRawEx_entry(dword_t device_id,
                                                        lpdword_t buffer_ptr,
                                                        dword_t buffer_length) {
+  static int logged_set_calls = 0;
+  if (logged_set_calls < 32) {
+    logged_set_calls++;
+    XELOGI("XamInputNonControllerSetRawEx: device_id={} len={}",
+           uint32_t(device_id), uint32_t(buffer_length));
+  }
   if (device_id != 5 && device_id != 6) {
+    XELOGW("XamInputNonControllerSetRawEx: rejected device_id={}",
+           uint32_t(device_id));
     return X_ERROR_INVALID_PARAMETER;
   }
   if (!buffer_ptr || !buffer_length || buffer_length > hid::kPortalBufferSize) {
