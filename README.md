@@ -7,7 +7,7 @@
 ### What this fork adds
 
 - **Emulated ToyPad** (`src/xenia/hid/portal/emulated_toypad.*`) — a complete software implementation of the LEGO Dimensions portal: crypto handshake, tag reads/writes, LED commands. The game detects it as real hardware. Protocol logic is ported from RPCS3's `dimensions_toypad`.
-- **Companion app support** — a loopback TCP listener (127.0.0.1:9191, same wire contract as the Cemu / RPCS3 / shadPS4 seamless builds) lets the LegoToypad overlay app place, move and remove characters while the game is running.
+- **Companion app support** — a loopback TCP listener (127.0.0.1:9191, same wire contract as the Cemu / RPCS3 / shadPS4 seamless builds) lets the [LegoToypad](https://github.com/harrysof/LegoToypad) overlay app place, move and remove characters while the game is running.
 - **Working DLC + Title Update installation.** Regular xenia fails LEGO Dimensions' post-update data install at 96%. Three fixes in this fork make it complete:
   - `IoDismountVolume` / `IoDismountVolumeByFileHandle` / `IoDismountVolumeByName` kernel exports are implemented (safe success no-ops) — the game dismounts the content volume to finalize the install.
   - Content package headers are written at creation time instead of on close — the installer enumerates its freshly created `appdata` package while it is still open, matching real hardware behavior.
@@ -20,7 +20,7 @@
 
 1. Grab the [latest release](https://github.com/NeverCookFirst/Xenia-Seamless-Toypad-Build/releases/latest) and follow its install guide (game + DLC + TU23 sources and folder layout are described there).
 2. Launch the game — the title bar should read `v0.0.23.3` (update applied), let it install its data when asked.
-3. Run the LegoToypad companion app and play.
+3. Run the [LegoToypad](https://github.com/harrysof/LegoToypad) companion app and play.
 
 Known quirks: don't switch the render target path to ROV (the game hangs on loading with it); saves made before the title update may black-screen — start a fresh save.
 
