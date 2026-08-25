@@ -307,7 +307,10 @@ dword_result_t xeXamContentCreate(dword_t user_index, lpstring_t root_name,
   }
 
   if (kernel_state()->file_system()->IsSymbolicLinkRegistered(symlink_path)) {
-    return X_ERROR_INVALID_PARAMETER;
+    // XDK: a root name that is already mapped fails with ERROR_ALREADY_EXISTS.
+    // LEGO Dimensions re-opens its still-open appdata package to validate the
+    // data install and only continues when it sees this exact error code.
+    return X_ERROR_ALREADY_EXISTS;
   }
 
   XCONTENT_DATA_INTERNAL content_data{};
