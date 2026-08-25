@@ -62,8 +62,6 @@ DECLARE_bool(clear_memory_page_state);
 
 DECLARE_string(readback_resolve);
 
-DECLARE_int32(draw_resolution_scale_x);
-DECLARE_int32(draw_resolution_scale_y);
 DECLARE_uint64(framerate_limit);
 
 DECLARE_bool(readback_memexport);
@@ -1652,9 +1650,25 @@ void EmulatorWindow::GpuClearCaches() {
   emulator()->graphics_system()->ClearCaches();
 }
 
+// OVERRIDE_* macros only work in the translation unit that DEFINEs the cvar;
+// these cvars live in the GPU module, so go through the global registry.
+template <typename T>
+static void OverrideConfigVarByName(const std::string& name, T value) {
+  if (!cvar::ConfigVars) {
+    return;
+  }
+  auto it = cvar::ConfigVars->find(name);
+  if (it == cvar::ConfigVars->end()) {
+    return;
+  }
+  if (auto* var = dynamic_cast<cvar::ConfigVar<T>*>(it->second)) {
+    var->OverrideConfigValue(value);
+  }
+}
+
 void EmulatorWindow::SetResolutionScale(int32_t scale) {
-  OVERRIDE_int32(draw_resolution_scale_x, scale);
-  OVERRIDE_int32(draw_resolution_scale_y, scale);
+  OverrideConfigVarByName<int32_t>("draw_resolution_scale_x", scale);
+  OverrideConfigVarByName<int32_t>("draw_resolution_scale_y", scale);
 
   const std::string notification_text = fmt::format(
       "Internal resolution set to {}x ({}p). Restart the game to apply.",
@@ -1670,7 +1684,8 @@ void EmulatorWindow::ToggleFramerateUnlock() {
   // vblank (e.g. TT Games / LEGO Dimensions) run at 60 FPS, the same trick
   // as RPCS3's "Vblank Rate 120". Takes effect immediately.
   const bool enable = cvars::framerate_limit != 120;
-  OVERRIDE_uint64(framerate_limit, enable ? 120 : 0);
+  OverrideConfigVarByName<uint64_t>("framerate_limit",
+                                    enable ? uint64_t(120) : uint64_t(0));
 
   const std::string notification_text =
       enable ? "60 FPS unlock enabled (vblank 120 Hz)."
