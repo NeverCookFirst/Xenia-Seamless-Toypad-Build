@@ -62,6 +62,10 @@ DECLARE_bool(clear_memory_page_state);
 
 DECLARE_string(readback_resolve);
 
+DECLARE_int32(draw_resolution_scale_x);
+DECLARE_int32(draw_resolution_scale_y);
+DECLARE_uint64(framerate_limit);
+
 DECLARE_bool(readback_memexport);
 
 DEFINE_bool(fullscreen, false, "Whether to launch the emulator in fullscreen.",
@@ -870,6 +874,24 @@ bool EmulatorWindow::Initialize() {
   }
   display_menu->AddChild(MenuItem::Create(MenuItem::Type::kSeparator));
   {
+    auto resolution_menu =
+        MenuItem::Create(MenuItem::Type::kPopup, "Internal &Resolution");
+    resolution_menu->AddChild(MenuItem::Create(
+        MenuItem::Type::kString, "1x (1280x720)",
+        std::bind(&EmulatorWindow::SetResolutionScale, this, 1)));
+    resolution_menu->AddChild(MenuItem::Create(
+        MenuItem::Type::kString, "2x (2560x1440)",
+        std::bind(&EmulatorWindow::SetResolutionScale, this, 2)));
+    resolution_menu->AddChild(MenuItem::Create(
+        MenuItem::Type::kString, "3x (3840x2160)",
+        std::bind(&EmulatorWindow::SetResolutionScale, this, 3)));
+    display_menu->AddChild(std::move(resolution_menu));
+    display_menu->AddChild(MenuItem::Create(
+        MenuItem::Type::kString, "Toggle &60 FPS Unlock (vblank 120 Hz)",
+        std::bind(&EmulatorWindow::ToggleFramerateUnlock, this)));
+  }
+  display_menu->AddChild(MenuItem::Create(MenuItem::Type::kSeparator));
+  {
     display_menu->AddChild(
         MenuItem::Create(MenuItem::Type::kString, "&Fullscreen", "F11",
                          std::bind(&EmulatorWindow::ToggleFullscreen, this)));
@@ -1628,6 +1650,35 @@ void EmulatorWindow::GpuTraceFrame() {
 
 void EmulatorWindow::GpuClearCaches() {
   emulator()->graphics_system()->ClearCaches();
+}
+
+void EmulatorWindow::SetResolutionScale(int32_t scale) {
+  OVERRIDE_int32(draw_resolution_scale_x, scale);
+  OVERRIDE_int32(draw_resolution_scale_y, scale);
+
+  const std::string notification_text = fmt::format(
+      "Internal resolution set to {}x ({}p). Restart the game to apply.",
+      scale, 720 * scale);
+  app_context_.CallInUIThread([this, notification_text]() {
+    new xe::ui::HostNotificationWindow(imgui_drawer(), "Internal Resolution",
+                                       notification_text, 0);
+  });
+}
+
+void EmulatorWindow::ToggleFramerateUnlock() {
+  // 120 Hz vblank makes 30 FPS locked titles that present every second
+  // vblank (e.g. TT Games / LEGO Dimensions) run at 60 FPS, the same trick
+  // as RPCS3's "Vblank Rate 120". Takes effect immediately.
+  const bool enable = cvars::framerate_limit != 120;
+  OVERRIDE_uint64(framerate_limit, enable ? 120 : 0);
+
+  const std::string notification_text =
+      enable ? "60 FPS unlock enabled (vblank 120 Hz)."
+             : "60 FPS unlock disabled (back to 30 FPS).";
+  app_context_.CallInUIThread([this, notification_text]() {
+    new xe::ui::HostNotificationWindow(imgui_drawer(), "Framerate",
+                                       notification_text, 0);
+  });
 }
 
 void EmulatorWindow::SetFullscreen(bool fullscreen_) {

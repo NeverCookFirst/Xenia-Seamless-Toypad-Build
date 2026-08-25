@@ -110,21 +110,6 @@ X_STATUS GraphicsSystem::Setup(cpu::Processor* processor,
       kernel::object_ref<kernel::XHostThread>(new kernel::XHostThread(
           kernel_state_, 128 * 1024, 0,
           [this]() {
-            uint64_t normalized_framerate_limit =
-                std::max<uint64_t>(0, cvars::framerate_limit);
-
-            // If VSYNC is enabled, but frames are not limited,
-            // lock framerate at default value of 60
-            if (normalized_framerate_limit == 0 && cvars::vsync) {
-              normalized_framerate_limit = 60;
-            }
-
-            const double vsync_duration_d =
-                cvars::vsync
-                    ? std::max<double>(5.0,
-                                       1000.0 / static_cast<double>(
-                                                    normalized_framerate_limit))
-                    : 1.0;
             uint64_t last_frame_time = Clock::QueryGuestTickCount();
     // Sleep for 90% of the vblank duration on Windows, spin for 10%
     // Linux uses full sleep duration due to scheduler quantum issues
@@ -142,6 +127,25 @@ X_STATUS GraphicsSystem::Setup(cpu::Processor* processor,
                 xe::threading::Sleep(std::chrono::milliseconds(100));
                 continue;
               }
+
+              // Re-read the cvars every iteration so toggling the framerate
+              // limit (e.g. the 60 FPS vblank unlock) applies without a
+              // restart.
+              uint64_t normalized_framerate_limit =
+                  std::max<uint64_t>(0, cvars::framerate_limit);
+
+              // If VSYNC is enabled, but frames are not limited,
+              // lock framerate at default value of 60
+              if (normalized_framerate_limit == 0 && cvars::vsync) {
+                normalized_framerate_limit = 60;
+              }
+
+              const double vsync_duration_d =
+                  cvars::vsync
+                      ? std::max<double>(
+                            5.0, 1000.0 / static_cast<double>(
+                                              normalized_framerate_limit))
+                      : 1.0;
 
               register_file()->values[XE_GPU_REG_D1MODE_V_COUNTER] +=
                   GetResolution().second;

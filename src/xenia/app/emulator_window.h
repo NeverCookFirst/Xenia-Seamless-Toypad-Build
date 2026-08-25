@@ -88,6 +88,8 @@ class EmulatorWindow {
   void UpdateTitle();
   void SetFullscreen(bool fullscreen);
   void ToggleFullscreen();
+  void SetResolutionScale(int32_t scale);
+  void ToggleFramerateUnlock();
   void SetInitializingShaderStorage(bool initializing);
 
   void TakeScreenshot();
