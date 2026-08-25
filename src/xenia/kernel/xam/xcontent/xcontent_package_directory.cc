@@ -62,6 +62,10 @@ ContentPackageDirectory::ContentPackageDirectory(
     : ContentPackage(file_system, device_path, package_path, metadata,
                      execution_info, spa_info) {
   header_path_ = ComputeHeaderPath(package_path);
+  // Persist the header immediately: on real hardware a freshly created
+  // package is enumerable right away, and titles (e.g. LEGO Dimensions'
+  // data installer) enumerate content while the new package is still open.
+  WriteContentHeaderFile();
 }
 
 ContentPackageDirectory::~ContentPackageDirectory() {
