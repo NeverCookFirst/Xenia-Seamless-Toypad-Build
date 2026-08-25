@@ -4,6 +4,16 @@
 
 **Download: [latest release](https://github.com/NeverCookFirst/Xenia-Seamless-Toypad-Build/releases/latest)** — the zip ships a preconfigured, portable build. The release notes contain the full step-by-step install guide (game, DLC and title update).
 
+### Gameplay demo
+
+<p align="center">
+    <a href="https://youtu.be/coj2Zw3jy1o">
+        <img src="https://img.youtube.com/vi/coj2Zw3jy1o/maxresdefault.jpg" width="640" alt="LEGO Dimensions running on the Xenia Seamless Toypad Build — gameplay demo" />
+    </a>
+</p>
+
+<p align="center"><i>Click to watch on YouTube.</i></p>
+
 ### What this fork adds
 
 - **Emulated ToyPad** (`src/xenia/hid/portal/emulated_toypad.*`) — a complete software implementation of the LEGO Dimensions portal: crypto handshake, tag reads/writes, LED commands. The game detects it as real hardware. Protocol logic is ported from RPCS3's `dimensions_toypad`.
