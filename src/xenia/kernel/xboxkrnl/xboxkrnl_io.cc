@@ -570,6 +570,25 @@ dword_result_t NtFlushBuffersFile_entry(
 }
 DECLARE_XBOXKRNL_EXPORT1(NtFlushBuffersFile, kFileSystem, kStub);
 
+// Guest content lives on host-path devices with no mount state to tear
+// down, so volume dismounts are a safe no-op. LEGO Dimensions dismounts
+// the content volume to finalize its 536 MB data install and treats the
+// missing export as a failed install.
+dword_result_t IoDismountVolume_entry(lpvoid_t device_object) {
+  return X_STATUS_SUCCESS;
+}
+DECLARE_XBOXKRNL_EXPORT1(IoDismountVolume, kFileSystem, kStub);
+
+dword_result_t IoDismountVolumeByFileHandle_entry(dword_t file_handle) {
+  return X_STATUS_SUCCESS;
+}
+DECLARE_XBOXKRNL_EXPORT1(IoDismountVolumeByFileHandle, kFileSystem, kStub);
+
+dword_result_t IoDismountVolumeByName_entry(lpvoid_t volume_name) {
+  return X_STATUS_SUCCESS;
+}
+DECLARE_XBOXKRNL_EXPORT1(IoDismountVolumeByName, kFileSystem, kStub);
+
 // https://docs.microsoft.com/en-us/windows/win32/devnotes/ntopensymboliclinkobject
 dword_result_t NtOpenSymbolicLinkObject_entry(
     lpdword_t handle_out, pointer_t<X_OBJECT_ATTRIBUTES> object_attrs) {
