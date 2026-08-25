@@ -313,6 +313,11 @@ void EmulatedToypad::HandleCommand(const uint8_t* buf, size_t buf_size) {
 
 void EmulatedToypad::PushResponse(std::array<uint8_t, 32> frame) {
   std::lock_guard<xe_mutex> guard(state_lock_);
+  // The game can keep issuing LED commands while not draining replies (e.g.
+  // while the window is unfocused); never let the queue grow without bound.
+  while (responses_.size() >= kMaxQueuedResponses) {
+    responses_.pop();
+  }
   responses_.push(frame);
 }
 

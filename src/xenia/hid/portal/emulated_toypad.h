@@ -26,6 +26,8 @@ namespace hid {
 
 constexpr size_t kToypadFigureCount = 7;
 constexpr size_t kToypadTagSize = 0x2D * 0x04;  // 180 bytes, NTAG213 dump
+// Upper bound for queued toypad replies; oldest frames are dropped beyond it.
+constexpr size_t kMaxQueuedResponses = 256;
 
 struct ToypadFigure {
   std::string file_path;  // optional .bin backing file, empty = in-memory only
