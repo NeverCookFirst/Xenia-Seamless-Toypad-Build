@@ -340,6 +340,56 @@ void EmulatorWindow::DisplayConfigGameConfigLoadCallback::PostGameConfigLoad() {
   emulator_window_.ApplyDisplayConfigForCvars();
 }
 
+void EmulatorWindow::ModsDialog::OnDraw(ImGuiIO& io) {
+  ImGui::SetNextWindowPos(ImVec2(60, 60), ImGuiCond_FirstUseEver);
+  ImGui::SetNextWindowSize(ImVec2(380, 300), ImGuiCond_FirstUseEver);
+  ImGui::SetNextWindowBgAlpha(0.85f);
+  bool dialog_open = true;
+  if (!ImGui::Begin("Mods (M)", &dialog_open,
+                    ImGuiWindowFlags_NoCollapse |
+                        ImGuiWindowFlags_HorizontalScrollbar)) {
+    ImGui::End();
+    Close();
+    return;
+  }
+
+  auto mods = vfs::ModOverlayRegistry::Get().mods();
+  if (mods.empty()) {
+    ImGui::TextDisabled("No mods found.");
+    ImGui::TextDisabled("Put them in mods\\ next to the exe:");
+    ImGui::TextDisabled("  mods\\<ModName>\\mod.txt + payload files.");
+  }
+  for (int i = 0; i < int(mods.size()); ++i) {
+    auto* mod = mods[size_t(i)];
+    ImGui::PushID(i);
+    bool enabled = mod->enabled;
+    if (ImGui::Checkbox(mod->name.c_str(), &enabled)) {
+      vfs::ModOverlayRegistry::Get().SetEnabled(mod, enabled);
+    }
+    if (mod->incompatible) {
+      ImGui::SameLine();
+      ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "(incompatible)");
+    }
+    if (!mod->description.empty()) {
+      ImGui::Indent();
+      ImGui::TextDisabled("%s", mod->description.c_str());
+      ImGui::Unindent();
+    }
+    ImGui::PopID();
+    ImGui::Spacing();
+  }
+  if (!mods.empty()) {
+    ImGui::Separator();
+    ImGui::TextDisabled("Boot-time files (text, splashes) need a game");
+    ImGui::TextDisabled("restart; character files reload on tag placement.");
+  }
+
+  ImGui::End();
+  if (!dialog_open) {
+    Close();
+  }
+}
+
 void EmulatorWindow::CheatMenuDialog::OnDraw(ImGuiIO& io) {
   CheatEngine* engine = emulator_window_.cheat_engine_.get();
   if (!engine) {
@@ -357,34 +407,6 @@ void EmulatorWindow::CheatMenuDialog::OnDraw(ImGuiIO& io) {
     Close();
     return;
   }
-
-  // --- File mods (virtual package overlays) ---
-  ImGui::TextUnformatted("File Mods");
-  ImGui::Separator();
-  auto mods = vfs::ModOverlayRegistry::Get().mods();
-  if (mods.empty()) {
-    ImGui::TextDisabled("No mods found (put them in mods\\ next to the exe).");
-  }
-  for (int i = 0; i < int(mods.size()); ++i) {
-    auto* mod = mods[size_t(i)];
-    ImGui::PushID(i + 0x4D00);
-    bool enabled = mod->enabled;
-    if (ImGui::Checkbox(mod->name.c_str(), &enabled)) {
-      vfs::ModOverlayRegistry::Get().SetEnabled(mod, enabled);
-    }
-    if (mod->incompatible) {
-      ImGui::SameLine();
-      ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "(incompatible)");
-    }
-    if (ImGui::IsItemHovered() && !mod->description.empty()) {
-      ImGui::SetTooltip("%s", mod->description.c_str());
-    }
-    ImGui::PopID();
-  }
-  if (!mods.empty()) {
-    ImGui::TextDisabled("Boot-time files (text, splashes) need a game restart.");
-  }
-  ImGui::Spacing();
 
   // --- Saved cheats ---
   ImGui::TextUnformatted("Cheats");
@@ -1118,6 +1140,15 @@ bool EmulatorWindow::Initialize() {
   }
   main_menu->AddChild(std::move(cheats_menu));
 
+  // Mods menu.
+  auto mods_menu = MenuItem::Create(MenuItem::Type::kPopup, "&Mods");
+  {
+    mods_menu->AddChild(
+        MenuItem::Create(MenuItem::Type::kString, "&Mods Panel", "M",
+                         std::bind(&EmulatorWindow::ToggleModsDialog, this)));
+  }
+  main_menu->AddChild(std::move(mods_menu));
+
   // XMP menu
   auto xmp_menu = MenuItem::Create(MenuItem::Type::kPopup, "&XMP");
   {
@@ -1351,6 +1382,9 @@ void EmulatorWindow::OnKeyDown(ui::KeyEvent& e) {
       RunPreviouslyPlayedTitle();
     } break;
 
+    case ui::VirtualKey::kM: {
+      ToggleModsDialog();
+    } break;
     case ui::VirtualKey::kOem3: {
       ToggleCheatMenuDialog();
     } break;
@@ -1953,6 +1987,18 @@ void EmulatorWindow::ToggleCheatMenuDialog() {
       cheat_menu_dialog_.release();
     } else {
       cheat_menu_dialog_.reset();
+    }
+  }
+}
+
+void EmulatorWindow::ToggleModsDialog() {
+  if (!mods_dialog_) {
+    mods_dialog_ = std::make_unique<ModsDialog>(imgui_drawer_.get(), *this);
+  } else {
+    if (mods_dialog_->IsClosing()) {
+      mods_dialog_.release();
+    } else {
+      mods_dialog_.reset();
     }
   }
 }
@@ -2771,6 +2817,10 @@ void EmulatorWindow::ClearDialogs() {
 
   if (cheat_menu_dialog_) {
     cheat_menu_dialog_.reset();
+  }
+
+  if (mods_dialog_) {
+    mods_dialog_.reset();
   }
 
   imgui_drawer_.get()->ClearDialogs();
