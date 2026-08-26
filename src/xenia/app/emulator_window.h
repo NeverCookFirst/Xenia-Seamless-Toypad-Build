@@ -13,6 +13,7 @@
 #include <memory>
 #include <string>
 
+#include "xenia/app/cheat_engine.h"
 #include "xenia/app/profile_dialogs.h"
 #include "xenia/emulator.h"
 #include "xenia/gpu/command_processor.h"
@@ -97,6 +98,7 @@ class EmulatorWindow {
   void SaveImage(const std::filesystem::path& path,
                  const xe::ui::RawImage& image);
 
+  void ToggleCheatMenuDialog();
   void ToggleProfilesConfigDialog();
   void ToggleXMPConfigDialog();
   void ToggleConsoleSettingsDialog();
@@ -221,6 +223,26 @@ class EmulatorWindow {
     EmulatorWindow& emulator_window_;
   };
 
+  class CheatMenuDialog final : public ui::ImGuiDialog {
+   public:
+    CheatMenuDialog(ui::ImGuiDrawer* imgui_drawer,
+                    EmulatorWindow& emulator_window)
+        : ui::ImGuiDialog(imgui_drawer), emulator_window_(emulator_window) {}
+
+   protected:
+    void OnDraw(ImGuiIO& io) override;
+
+   private:
+    EmulatorWindow& emulator_window_;
+
+    int scan_type_index_ = 2;  // 32-bit by default.
+    char scan_value_text_[32] = "0";
+    int selected_result_ = -1;
+    char edit_value_text_[32] = "0";
+    char cheat_name_text_[64] = "";
+    char status_text_[128] = "";
+  };
+
   class XMPConfigDialog final : public ui::ImGuiDialog {
    public:
     XMPConfigDialog(ui::ImGuiDrawer* imgui_drawer,
@@ -330,6 +352,9 @@ class EmulatorWindow {
   std::unique_ptr<ProfileConfigDialog> profile_config_dialog_;
 
   std::unique_ptr<XMPConfigDialog> xmp_config_dialog_;
+
+  std::unique_ptr<CheatEngine> cheat_engine_;
+  std::unique_ptr<CheatMenuDialog> cheat_menu_dialog_;
 
   std::vector<RecentTitleEntry> recently_launched_titles_;
 };

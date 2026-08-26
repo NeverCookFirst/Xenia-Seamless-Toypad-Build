@@ -9,6 +9,10 @@
 
 #include "xenia/app/emulator_window.h"
 
+#include <algorithm>
+#include <cstdio>
+#include <cstdlib>
+
 #include "third_party/imgui/imgui.h"
 #include "third_party/stb/stb_image_write.h"
 #if defined(__clang__)
@@ -333,6 +337,171 @@ void EmulatorWindow::EmulatorWindowListener::OnUsbDeviceChanged(
 
 void EmulatorWindow::DisplayConfigGameConfigLoadCallback::PostGameConfigLoad() {
   emulator_window_.ApplyDisplayConfigForCvars();
+}
+
+void EmulatorWindow::CheatMenuDialog::OnDraw(ImGuiIO& io) {
+  CheatEngine* engine = emulator_window_.cheat_engine_.get();
+  if (!engine) {
+    return;
+  }
+
+  ImGui::SetNextWindowPos(ImVec2(40, 40), ImGuiCond_FirstUseEver);
+  ImGui::SetNextWindowSize(ImVec2(430, 540), ImGuiCond_FirstUseEver);
+  ImGui::SetNextWindowBgAlpha(0.85f);
+  bool dialog_open = true;
+  if (!ImGui::Begin("Cheat Menu (`)", &dialog_open,
+                    ImGuiWindowFlags_NoCollapse |
+                        ImGuiWindowFlags_HorizontalScrollbar)) {
+    ImGui::End();
+    Close();
+    return;
+  }
+
+  // --- Saved cheats ---
+  ImGui::TextUnformatted("Cheats");
+  ImGui::Separator();
+  auto& cheats = engine->cheats();
+  if (cheats.empty()) {
+    ImGui::TextDisabled(
+        "No saved cheats yet - find values with the scanner below,");
+    ImGui::TextDisabled("then \"Save as cheat\".");
+  }
+  int remove_index = -1;
+  for (int i = 0; i < int(cheats.size()); ++i) {
+    ImGui::PushID(i);
+    bool enabled = cheats[size_t(i)].enabled;
+    if (ImGui::Checkbox(cheats[size_t(i)].name.c_str(), &enabled)) {
+      engine->SetCheatEnabled(size_t(i), enabled);
+      engine->Save();
+    }
+    ImGui::SameLine();
+    if (ImGui::SmallButton("X")) {
+      remove_index = i;
+    }
+    ImGui::PopID();
+  }
+  if (remove_index >= 0) {
+    engine->RemoveCheat(size_t(remove_index));
+    engine->Save();
+  }
+
+  // --- Scanner ---
+  ImGui::Spacing();
+  ImGui::TextUnformatted("Memory Scanner");
+  ImGui::Separator();
+  ImGui::Combo("Value type", &scan_type_index_,
+               "8-bit\0"
+               "16-bit\0"
+               "32-bit\0"
+               "float\0");
+  ImGui::InputText("Value", scan_value_text_, sizeof(scan_value_text_));
+  double scan_value = strtod(scan_value_text_, nullptr);
+  CheatEngine::ValueType selected_type =
+      CheatEngine::ValueType(scan_type_index_);
+  if (ImGui::Button("First Scan")) {
+    engine->NewScan(selected_type);
+    engine->ScanExact(scan_value);
+    selected_result_ = -1;
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Next Scan =")) {
+    engine->ScanExact(scan_value);
+    selected_result_ = -1;
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Start Unknown")) {
+    engine->NewScan(selected_type);
+    selected_result_ = -1;
+  }
+  if (engine->has_snapshot()) {
+    if (ImGui::Button("Increased")) {
+      engine->ScanCompare(CheatEngine::CompareOp::kIncreased);
+      selected_result_ = -1;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Decreased")) {
+      engine->ScanCompare(CheatEngine::CompareOp::kDecreased);
+      selected_result_ = -1;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Changed")) {
+      engine->ScanCompare(CheatEngine::CompareOp::kChanged);
+      selected_result_ = -1;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Unchanged")) {
+      engine->ScanCompare(CheatEngine::CompareOp::kUnchanged);
+      selected_result_ = -1;
+    }
+  }
+  if (engine->results_are_all_memory()) {
+    ImGui::TextDisabled(
+        "Snapshot taken - change the value in game, then filter.");
+  } else if (engine->has_snapshot()) {
+    ImGui::Text("Results: %u%s", uint32_t(engine->result_count()),
+                engine->results_truncated() ? " (truncated!)" : "");
+  }
+
+  // --- Result list ---
+  const auto& results = engine->results();
+  if (!results.empty()) {
+    ImGui::BeginChild("scan_results", ImVec2(0, 140), true);
+    int shown_count = int(std::min<size_t>(results.size(), 200));
+    for (int i = 0; i < shown_count; ++i) {
+      uint32_t address = results[size_t(i)];
+      double current = engine->ReadValue(address, engine->scan_type());
+      char label[64];
+      std::snprintf(label, sizeof(label), "%08X = %.6g%s", address, current,
+                    engine->IsFrozen(address) ? "  [frozen]" : "");
+      if (ImGui::Selectable(label, selected_result_ == i)) {
+        selected_result_ = i;
+        std::snprintf(edit_value_text_, sizeof(edit_value_text_), "%g",
+                      current);
+      }
+    }
+    if (results.size() > 200) {
+      ImGui::TextDisabled("...and %u more", uint32_t(results.size() - 200));
+    }
+    ImGui::EndChild();
+  }
+
+  // --- Selected address actions ---
+  if (selected_result_ >= 0 && selected_result_ < int(results.size())) {
+    uint32_t address = results[size_t(selected_result_)];
+    ImGui::Text("Selected: %08X (now %.6g)", address,
+                engine->ReadValue(address, engine->scan_type()));
+    ImGui::InputText("Set to", edit_value_text_, sizeof(edit_value_text_));
+    double edit_value = strtod(edit_value_text_, nullptr);
+    if (ImGui::Button("Write once")) {
+      engine->WriteValue(address, engine->scan_type(), edit_value);
+    }
+    ImGui::SameLine();
+    bool frozen = engine->IsFrozen(address);
+    if (ImGui::Button(frozen ? "Unfreeze" : "Freeze")) {
+      engine->SetFrozen(address, engine->scan_type(), edit_value, !frozen);
+    }
+    ImGui::InputText("Cheat name", cheat_name_text_, sizeof(cheat_name_text_));
+    ImGui::SameLine();
+    if (ImGui::Button("Save as cheat")) {
+      engine->AddCheat(cheat_name_text_, address, engine->scan_type(),
+                       edit_value);
+      engine->Save();
+      cheat_name_text_[0] = '\0';
+    }
+  }
+
+  if (engine->frozen_count()) {
+    ImGui::Text("%u frozen value(s)", uint32_t(engine->frozen_count()));
+    ImGui::SameLine();
+    if (ImGui::SmallButton("Unfreeze all")) {
+      engine->ClearFrozen();
+    }
+  }
+
+  ImGui::End();
+  if (!dialog_open) {
+    Close();
+  }
 }
 
 void EmulatorWindow::DisplayConfigDialog::OnDraw(ImGuiIO& io) {
@@ -911,6 +1080,15 @@ bool EmulatorWindow::Initialize() {
   }
   main_menu->AddChild(std::move(hid_menu));
 
+  // Cheats menu.
+  auto cheats_menu = MenuItem::Create(MenuItem::Type::kPopup, "Chea&ts");
+  {
+    cheats_menu->AddChild(MenuItem::Create(
+        MenuItem::Type::kString, "&Cheat Menu", "`",
+        std::bind(&EmulatorWindow::ToggleCheatMenuDialog, this)));
+  }
+  main_menu->AddChild(std::move(cheats_menu));
+
   // XMP menu
   auto xmp_menu = MenuItem::Create(MenuItem::Type::kPopup, "&XMP");
   {
@@ -1142,6 +1320,10 @@ void EmulatorWindow::OnKeyDown(ui::KeyEvent& e) {
 
     case ui::VirtualKey::kF9: {
       RunPreviouslyPlayedTitle();
+    } break;
+
+    case ui::VirtualKey::kOem3: {
+      ToggleCheatMenuDialog();
     } break;
 
     default:
@@ -1722,6 +1904,26 @@ void EmulatorWindow::ToggleDisplayConfigDialog() {
       display_config_dialog_.release();
     } else {
       display_config_dialog_.reset();
+    }
+  }
+}
+
+void EmulatorWindow::ToggleCheatMenuDialog() {
+  if (!cheat_menu_dialog_) {
+    if (!cheat_engine_) {
+      char cheats_file_name[32];
+      std::snprintf(cheats_file_name, sizeof(cheats_file_name),
+                    "cheats_%08X.ini", emulator_->title_id());
+      cheat_engine_ = std::make_unique<CheatEngine>(
+          emulator_->memory(), emulator_->storage_root() / cheats_file_name);
+    }
+    cheat_menu_dialog_ =
+        std::make_unique<CheatMenuDialog>(imgui_drawer_.get(), *this);
+  } else {
+    if (cheat_menu_dialog_->IsClosing()) {
+      cheat_menu_dialog_.release();
+    } else {
+      cheat_menu_dialog_.reset();
     }
   }
 }
@@ -2536,6 +2738,10 @@ void EmulatorWindow::ClearDialogs() {
 
   if (xmp_config_dialog_) {
     xmp_config_dialog_.reset();
+  }
+
+  if (cheat_menu_dialog_) {
+    cheat_menu_dialog_.reset();
   }
 
   imgui_drawer_.get()->ClearDialogs();
