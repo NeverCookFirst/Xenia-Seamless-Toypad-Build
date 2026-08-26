@@ -9,6 +9,7 @@
 
 #include "xenia/vfs/devices/xcontent_container_file.h"
 #include "xenia/vfs/devices/xcontent_container_entry.h"
+#include "xenia/vfs/mod_overlay.h"
 
 namespace xe {
 namespace vfs {
@@ -58,6 +59,11 @@ X_STATUS XContentContainerFile::ReadSync(std::span<uint8_t> buffer,
       break;
     }
   }
+
+  // Virtual file mods: overlay same-length byte patches onto package reads.
+  ModOverlayRegistry::Get().Apply(
+      entry_->name(), byte_offset,
+      std::span<uint8_t>(buffer.data(), *out_bytes_read));
 
   return X_STATUS_SUCCESS;
 }

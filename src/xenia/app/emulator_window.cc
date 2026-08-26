@@ -53,6 +53,7 @@
 #include "xenia/ui/presenter.h"
 #include "xenia/ui/ui_event.h"
 #include "xenia/ui/virtual_key.h"
+#include "xenia/vfs/mod_overlay.h"
 
 #include "version.h"
 
@@ -356,6 +357,34 @@ void EmulatorWindow::CheatMenuDialog::OnDraw(ImGuiIO& io) {
     Close();
     return;
   }
+
+  // --- File mods (virtual package overlays) ---
+  ImGui::TextUnformatted("File Mods");
+  ImGui::Separator();
+  auto mods = vfs::ModOverlayRegistry::Get().mods();
+  if (mods.empty()) {
+    ImGui::TextDisabled("No mods found (put them in mods\\ next to the exe).");
+  }
+  for (int i = 0; i < int(mods.size()); ++i) {
+    auto* mod = mods[size_t(i)];
+    ImGui::PushID(i + 0x4D00);
+    bool enabled = mod->enabled;
+    if (ImGui::Checkbox(mod->name.c_str(), &enabled)) {
+      vfs::ModOverlayRegistry::Get().SetEnabled(mod, enabled);
+    }
+    if (mod->incompatible) {
+      ImGui::SameLine();
+      ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "(incompatible)");
+    }
+    if (ImGui::IsItemHovered() && !mod->description.empty()) {
+      ImGui::SetTooltip("%s", mod->description.c_str());
+    }
+    ImGui::PopID();
+  }
+  if (!mods.empty()) {
+    ImGui::TextDisabled("Boot-time files (text, splashes) need a game restart.");
+  }
+  ImGui::Spacing();
 
   // --- Saved cheats ---
   ImGui::TextUnformatted("Cheats");
