@@ -35,6 +35,13 @@ DEFINE_bool(perf_monitor, true,
             "and write them to perf_session.csv next to the executable. The "
             "previous session's file is deleted on startup.",
             "General");
+DEFINE_bool(perf_log_to_file, false,
+            "Also append the aggregated rows to perf_session.csv next to the "
+            "executable. Off by default so that simply running the emulator "
+            "never leaves files behind - the Performance panel works either "
+            "way. The file belongs to a single session: the previous one is "
+            "deleted when logging starts.",
+            "General");
 DEFINE_uint64(perf_monitor_interval, 60,
               "Seconds between aggregated rows in perf_session.csv. Live "
               "readings in the Performance panel refresh every second "
@@ -261,13 +268,15 @@ void PerfMonitor::Start() {
     return;
   }
   log_path_ = xe::filesystem::GetExecutableFolder() / "perf_session.csv";
-  // Each session owns the file outright - drop whatever the last run left.
-  std::error_code ec;
-  std::filesystem::remove(log_path_, ec);
-  WriteCsvHeader();
+  if (cvars::perf_log_to_file) {
+    // Each session owns the file outright - drop whatever the last run left.
+    std::error_code ec;
+    std::filesystem::remove(log_path_, ec);
+    WriteCsvHeader();
+    XELOGI("PerfMonitor: logging to {}", log_path_.string());
+  }
   stop_requested_.store(false, std::memory_order_release);
   thread_ = std::thread(&PerfMonitor::ThreadMain, this);
-  XELOGI("PerfMonitor: logging to {}", log_path_.string());
 }
 
 void PerfMonitor::Shutdown() {
@@ -302,6 +311,9 @@ void PerfMonitor::WriteCsvHeader() {
 }
 
 void PerfMonitor::AppendCsvRow(const PerfSample& s) {
+  if (!cvars::perf_log_to_file) {
+    return;
+  }
   std::ofstream out(log_path_, std::ios::app);
   if (!out) {
     return;

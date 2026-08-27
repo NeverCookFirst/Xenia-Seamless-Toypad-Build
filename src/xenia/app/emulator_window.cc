@@ -73,6 +73,7 @@ DECLARE_uint64(framerate_limit);
 DECLARE_bool(readback_memexport);
 
 DECLARE_uint64(perf_monitor_interval);
+DECLARE_bool(perf_log_to_file);
 
 DEFINE_bool(fullscreen, false, "Whether to launch the emulator in fullscreen.",
             "Display");
@@ -462,8 +463,13 @@ void EmulatorWindow::PerfDialog::OnDraw(ImGuiIO& io) {
 
   ImGui::Spacing();
   ImGui::Separator();
-  ImGui::TextDisabled("Written to %s", monitor.log_path().string().c_str());
-  ImGui::TextDisabled("The file is recreated on every launch.");
+  if (cvars::perf_log_to_file) {
+    ImGui::TextDisabled("Written to %s", monitor.log_path().string().c_str());
+    ImGui::TextDisabled("The file is recreated on every launch.");
+  } else {
+    ImGui::TextDisabled("Set perf_log_to_file = true in the config to also");
+    ImGui::TextDisabled("write these rows to perf_session.csv.");
+  }
 
   ImGui::End();
   if (!dialog_open) {
