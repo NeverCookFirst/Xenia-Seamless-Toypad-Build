@@ -9,6 +9,7 @@
 
 #include "xenia/gpu/d3d12/d3d12_command_processor.h"
 #include <cstring>
+#include <set>
 #include "xenia/apu/audio_system.h"
 #include "xenia/base/assert.h"
 #include "xenia/base/byte_order.h"
@@ -41,6 +42,8 @@ DEFINE_bool(d3d12_submit_on_primary_buffer_end, true,
 
 DECLARE_bool(clear_memory_page_state);
 DECLARE_bool(readback_resolve_half_pixel_offset);
+DECLARE_uint64(readback_resolve_max_kb);
+DECLARE_bool(readback_resolve_log_sizes);
 
 namespace xe {
 namespace gpu {
@@ -3196,6 +3199,25 @@ bool D3D12CommandProcessor::IssueCopy_ReadbackResolvePath() {
     return false;
   }
   if (!written_length) {
+    return true;
+  }
+
+  // The resolve itself is already done at this point - everything below is
+  // purely the cost of getting a copy to the CPU, so bailing out here is
+  // exactly "no readback for this one resolve" and leaves the image alone.
+  if (cvars::readback_resolve_log_sizes) {
+    static std::set<uint32_t> logged_sizes;
+    if (logged_sizes.size() < 64 &&
+        logged_sizes.insert(written_length).second) {
+      XELOGI("ResolveReadback: {} KB ({} bytes){}", written_length >> 10,
+             written_length, is_scaled ? ", scaled" : "");
+    }
+  }
+  // Games typically read back only a small surface (a downsampled luminance
+  // target for HDR eye adaptation, say) and never touch the full-screen
+  // resolves, so copying those back is wasted bandwidth.
+  if (cvars::readback_resolve_max_kb &&
+      uint64_t(written_length) > cvars::readback_resolve_max_kb * 1024) {
     return true;
   }
 

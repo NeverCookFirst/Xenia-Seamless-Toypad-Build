@@ -91,6 +91,24 @@ DEFINE_bool(
     "reused later in the frame.",
     "GPU");
 
+DEFINE_uint64(
+    readback_resolve_max_kb, 0,
+    "Skip CPU readback for resolves whose destination is larger than this "
+    "many KB (0 disables the limit and reads everything back, as before).\n"
+    "Games usually read back only a small surface - a downsampled luminance "
+    "target for HDR eye adaptation, for example - while full-screen resolves "
+    "are never touched by the CPU, so copying them is wasted work. Capping "
+    "the size keeps the small reads the game depends on and drops the rest.\n"
+    "Lower it until the picture starts breaking, then step back up.",
+    "GPU");
+
+DEFINE_bool(
+    readback_resolve_log_sizes, false,
+    "Log each distinct resolve readback size once, so the right value for "
+    "readback_resolve_max_kb can be picked from what the game actually does "
+    "instead of by guesswork.",
+    "GPU");
+
 DEFINE_bool(
     readback_memexport, false,
     "Read data written by memory export in shaders on the CPU. "
