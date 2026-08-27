@@ -663,6 +663,12 @@ bool COMMAND_PROCESSOR::ExecutePacketType3_XE_SWAP(uint32_t packet,
   COMMAND_PROCESSOR::IssueSwap(frontbuffer_ptr, frontbuffer_width,
                                frontbuffer_height);
 
+  // Guest frame boundary - the one place every backend passes through, so
+  // the performance monitor counts frames here. Start() is a no-op after
+  // the first swap.
+  PerfMonitor::Get().Start();
+  PerfMonitor::Get().NotifyGuestFrame();
+
   ++counter_;
   return true;
 }

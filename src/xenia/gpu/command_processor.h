@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "xenia/base/math.h"
+#include "xenia/base/perf_monitor.h"
 #include "xenia/base/ring_buffer.h"
 #include "xenia/gpu/register_file.h"
 #include "xenia/gpu/trace_writer.h"

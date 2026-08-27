@@ -31,6 +31,7 @@
 #include "xenia/base/cvar.h"
 #include "xenia/base/debugging.h"
 #include "xenia/base/logging.h"
+#include "xenia/base/perf_monitor.h"
 #include "xenia/base/platform.h"
 #include "xenia/base/profiling.h"
 #include "xenia/base/system.h"
@@ -70,6 +71,8 @@ DECLARE_string(readback_resolve);
 DECLARE_uint64(framerate_limit);
 
 DECLARE_bool(readback_memexport);
+
+DECLARE_uint64(perf_monitor_interval);
 
 DEFINE_bool(fullscreen, false, "Whether to launch the emulator in fullscreen.",
             "Display");
@@ -383,6 +386,84 @@ void EmulatorWindow::ModsDialog::OnDraw(ImGuiIO& io) {
     ImGui::TextDisabled("Boot-time files (text, splashes) need a game");
     ImGui::TextDisabled("restart; character files reload on tag placement.");
   }
+
+  ImGui::End();
+  if (!dialog_open) {
+    Close();
+  }
+}
+
+void EmulatorWindow::PerfDialog::OnDraw(ImGuiIO& io) {
+  ImGui::SetNextWindowPos(ImVec2(80, 80), ImGuiCond_FirstUseEver);
+  ImGui::SetNextWindowSize(ImVec2(460, 420), ImGuiCond_FirstUseEver);
+  ImGui::SetNextWindowBgAlpha(0.85f);
+  bool dialog_open = true;
+  if (!ImGui::Begin("Performance (P)", &dialog_open,
+                    ImGuiWindowFlags_NoCollapse |
+                        ImGuiWindowFlags_HorizontalScrollbar)) {
+    ImGui::End();
+    Close();
+    return;
+  }
+
+  auto& monitor = PerfMonitor::Get();
+  if (!monitor.running()) {
+    ImGui::TextDisabled("Waiting for the game to present its first frame.");
+    ImGui::TextDisabled("(disabled entirely when perf_monitor = false)");
+    ImGui::End();
+    if (!dialog_open) {
+      Close();
+    }
+    return;
+  }
+
+  const PerfSample live = monitor.live();
+
+  ImGui::TextUnformatted("Now");
+  ImGui::Separator();
+  ImGui::Text("FPS          %6.1f  (%.1f ms/frame)", live.fps_avg,
+              live.frame_ms_avg);
+  ImGui::Text("Frames       %llu total",
+              static_cast<unsigned long long>(live.frames_total));
+  ImGui::Text("CPU          %5.1f%% xenia   %5.1f%% system",
+              live.cpu_process_percent, live.cpu_system_percent);
+  ImGui::Text("RAM          %7.0f MB working   %7.0f MB private",
+              live.ram_working_set_mb, live.ram_private_mb);
+  if (live.vram_used_mb >= 0.0) {
+    ImGui::Text("VRAM         %7.0f MB of %7.0f MB budget", live.vram_used_mb,
+                live.vram_budget_mb);
+  } else {
+    ImGui::TextDisabled("VRAM         unavailable on this system");
+  }
+  ImGui::Text("Session      %.0f s", live.uptime_seconds);
+
+  ImGui::Spacing();
+  ImGui::TextUnformatted("History");
+  ImGui::Separator();
+
+  const std::vector<PerfSample> samples = monitor.samples();
+  if (samples.empty()) {
+    ImGui::TextDisabled("First row lands after perf_monitor_interval seconds");
+    ImGui::TextDisabled("(currently %llu s).",
+                        static_cast<unsigned long long>(
+                            std::max<uint64_t>(1, cvars::perf_monitor_interval)));
+  } else {
+    ImGui::BeginChild("perf_history", ImVec2(0, 150), true);
+    ImGui::TextDisabled("  time     avg    min    max   1%% low    RAM");
+    // Newest first - that is what you look at while playing.
+    for (size_t i = samples.size(); i-- > 0;) {
+      const PerfSample& s = samples[i];
+      ImGui::Text("%6.0fs  %5.1f  %5.1f  %5.1f   %5.1f  %6.0f MB",
+                  s.uptime_seconds, s.fps_avg, s.fps_min, s.fps_max,
+                  s.fps_1pct_low, s.ram_working_set_mb);
+    }
+    ImGui::EndChild();
+  }
+
+  ImGui::Spacing();
+  ImGui::Separator();
+  ImGui::TextDisabled("Written to %s", monitor.log_path().string().c_str());
+  ImGui::TextDisabled("The file is recreated on every launch.");
 
   ImGui::End();
   if (!dialog_open) {
@@ -1146,6 +1227,9 @@ bool EmulatorWindow::Initialize() {
     mods_menu->AddChild(
         MenuItem::Create(MenuItem::Type::kString, "&Mods Panel", "M",
                          std::bind(&EmulatorWindow::ToggleModsDialog, this)));
+    mods_menu->AddChild(
+        MenuItem::Create(MenuItem::Type::kString, "&Performance", "P",
+                         std::bind(&EmulatorWindow::TogglePerfDialog, this)));
   }
   main_menu->AddChild(std::move(mods_menu));
 
@@ -1384,6 +1468,9 @@ void EmulatorWindow::OnKeyDown(ui::KeyEvent& e) {
 
     case ui::VirtualKey::kM: {
       ToggleModsDialog();
+    } break;
+    case ui::VirtualKey::kP: {
+      TogglePerfDialog();
     } break;
     case ui::VirtualKey::kOem3: {
       ToggleCheatMenuDialog();
@@ -1999,6 +2086,18 @@ void EmulatorWindow::ToggleModsDialog() {
       mods_dialog_.release();
     } else {
       mods_dialog_.reset();
+    }
+  }
+}
+
+void EmulatorWindow::TogglePerfDialog() {
+  if (!perf_dialog_) {
+    perf_dialog_ = std::make_unique<PerfDialog>(imgui_drawer_.get(), *this);
+  } else {
+    if (perf_dialog_->IsClosing()) {
+      perf_dialog_.release();
+    } else {
+      perf_dialog_.reset();
     }
   }
 }

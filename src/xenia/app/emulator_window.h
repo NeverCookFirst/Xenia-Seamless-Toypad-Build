@@ -100,6 +100,7 @@ class EmulatorWindow {
 
   void ToggleCheatMenuDialog();
   void ToggleModsDialog();
+  void TogglePerfDialog();
   void ToggleProfilesConfigDialog();
   void ToggleXMPConfigDialog();
   void ToggleConsoleSettingsDialog();
@@ -256,6 +257,18 @@ class EmulatorWindow {
     EmulatorWindow& emulator_window_;
   };
 
+  class PerfDialog final : public ui::ImGuiDialog {
+   public:
+    PerfDialog(ui::ImGuiDrawer* imgui_drawer, EmulatorWindow& emulator_window)
+        : ui::ImGuiDialog(imgui_drawer), emulator_window_(emulator_window) {}
+
+   protected:
+    void OnDraw(ImGuiIO& io) override;
+
+   private:
+    EmulatorWindow& emulator_window_;
+  };
+
   class XMPConfigDialog final : public ui::ImGuiDialog {
    public:
     XMPConfigDialog(ui::ImGuiDrawer* imgui_drawer,
@@ -369,6 +382,7 @@ class EmulatorWindow {
   std::unique_ptr<CheatEngine> cheat_engine_;
   std::unique_ptr<CheatMenuDialog> cheat_menu_dialog_;
   std::unique_ptr<ModsDialog> mods_dialog_;
+  std::unique_ptr<PerfDialog> perf_dialog_;
 
   std::vector<RecentTitleEntry> recently_launched_titles_;
 };
