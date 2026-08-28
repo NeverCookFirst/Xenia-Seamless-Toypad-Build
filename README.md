@@ -4,6 +4,8 @@
 
 **Download: [latest release](https://github.com/NeverCookFirst/Xenia-Seamless-Toypad-Build/releases/latest)** — the zip ships a preconfigured, portable build. The release notes contain the full step-by-step install guide (game, DLC and title update).
 
+Thanks [LEGO Dimensions Discord](https://discord.gg/PuXpBMFE4P) for support!
+
 ### Gameplay demo
 
 <p align="center">
