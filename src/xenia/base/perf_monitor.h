@@ -55,9 +55,17 @@ class PerfMonitor {
   PerfMonitor& operator=(const PerfMonitor&) = delete;
 
   // Starts the sampler thread and truncates the previous session log.
-  // Safe to call repeatedly; only the first call does anything.
+  // Safe to call repeatedly; only the first call does anything. Does nothing
+  // while the monitor is disabled, which is the default - the GPU thread calls
+  // this on every swap, so enabling it later picks up from the next frame.
   void Start();
   void Shutdown();
+
+  // Turns sampling on or off at runtime and remembers the choice in the
+  // perf_monitor cvar, so the Performance panel can drive it without a config
+  // edit and a restart.
+  void SetEnabled(bool enabled);
+  static bool enabled();
 
   // Counted once per guest swap. Cheap enough to call from the GPU thread.
   void NotifyGuestFrame() {
@@ -79,6 +87,10 @@ class PerfMonitor {
   void ThreadMain();
   void WriteCsvHeader();
   void AppendCsvRow(const PerfSample& sample);
+
+  // Serializes Start/Shutdown: the GPU thread calls Start() on every swap
+  // while the UI thread may be tearing the sampler down.
+  std::mutex lifecycle_mutex_;
 
   std::atomic<uint64_t> frames_total_{0};
   std::atomic<bool> running_{false};

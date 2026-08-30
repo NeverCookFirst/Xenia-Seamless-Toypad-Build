@@ -915,7 +915,19 @@ bool Win32Window::HandleMouse(UINT message, WPARAM wParam, LPARAM lParam,
 bool Win32Window::HandleKeyboard(
     UINT message, WPARAM wParam, LPARAM lParam,
     WindowDestructionReceiver& destruction_receiver) {
-  KeyEvent e(this, VirtualKey(wParam), lParam & 0xFFFF,
+  // Windows reports both shift keys as VK_SHIFT. Recover the side from the
+  // scancode so that a hotkey can bind to one of them without stealing the
+  // other; everything that only cares about "shift is held" keeps working
+  // through the modifier flags below.
+  WPARAM virtual_key = wParam;
+  if ((message == WM_KEYDOWN || message == WM_KEYUP) && wParam == VK_SHIFT) {
+    UINT resolved =
+        MapVirtualKey(UINT((lParam >> 16) & 0xFF), MAPVK_VSC_TO_VK_EX);
+    if (resolved == VK_LSHIFT || resolved == VK_RSHIFT) {
+      virtual_key = resolved;
+    }
+  }
+  KeyEvent e(this, VirtualKey(virtual_key), lParam & 0xFFFF,
              !!(lParam & (LPARAM(1) << 30)), !!(GetKeyState(VK_SHIFT) & 0x80),
              !!(GetKeyState(VK_CONTROL) & 0x80),
              !!(GetKeyState(VK_MENU) & 0x80), !!(GetKeyState(VK_LWIN) & 0x80));

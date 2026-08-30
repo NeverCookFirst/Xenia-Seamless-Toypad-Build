@@ -862,7 +862,10 @@ void ImGuiDrawer::OnKey(KeyEvent& e, bool is_down) {
     io.AddKeyEvent(*imGuiKey, is_down);
   }
   switch (virtual_key) {
+    // Win32Window resolves VK_SHIFT into a side, so accept all three.
     case VirtualKey::kShift:
+    case VirtualKey::kLShift:
+    case VirtualKey::kRShift:
       io.KeyShift = is_down;
       break;
     case VirtualKey::kControl:

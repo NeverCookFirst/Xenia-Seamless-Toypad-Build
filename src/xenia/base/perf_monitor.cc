@@ -30,10 +30,10 @@
 #include <psapi.h>
 #endif  // XE_PLATFORM_WIN32
 
-DEFINE_bool(perf_monitor, true,
-            "Sample guest frame rate and host CPU/RAM/VRAM usage during play "
-            "and write them to perf_session.csv next to the executable. The "
-            "previous session's file is deleted on startup.",
+DEFINE_bool(perf_monitor, false,
+            "Sample guest frame rate and host CPU/RAM/VRAM usage during play. "
+            "Off by default - nothing is measured until you ask for it, either "
+            "here or with the checkbox in the Performance panel (Right Shift).",
             "General");
 DEFINE_bool(perf_log_to_file, false,
             "Also append the aggregated rows to perf_session.csv next to the "
@@ -263,9 +263,17 @@ void PerfMonitor::Start() {
   if (!cvars::perf_monitor) {
     return;
   }
+  std::lock_guard<std::mutex> lifecycle_lock(lifecycle_mutex_);
   bool expected = false;
   if (!running_.compare_exchange_strong(expected, true)) {
     return;
+  }
+  {
+    // Each run of the sampler is its own session - the thread restarts its
+    // clock, so keeping rows from a previous run would mix two timelines.
+    std::lock_guard<std::mutex> lock(data_mutex_);
+    samples_.clear();
+    live_ = PerfSample();
   }
   log_path_ = xe::filesystem::GetExecutableFolder() / "perf_session.csv";
   if (cvars::perf_log_to_file) {
@@ -279,7 +287,22 @@ void PerfMonitor::Start() {
   thread_ = std::thread(&PerfMonitor::ThreadMain, this);
 }
 
+bool PerfMonitor::enabled() { return cvars::perf_monitor; }
+
+void PerfMonitor::SetEnabled(bool enabled) {
+  if (cvars::perf_monitor == enabled) {
+    return;
+  }
+  OVERRIDE_bool(perf_monitor, enabled);
+  if (enabled) {
+    Start();
+  } else {
+    Shutdown();
+  }
+}
+
 void PerfMonitor::Shutdown() {
+  std::lock_guard<std::mutex> lifecycle_lock(lifecycle_mutex_);
   if (!running_.exchange(false)) {
     return;
   }

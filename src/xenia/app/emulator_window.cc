@@ -399,7 +399,7 @@ void EmulatorWindow::PerfDialog::OnDraw(ImGuiIO& io) {
   ImGui::SetNextWindowSize(ImVec2(460, 420), ImGuiCond_FirstUseEver);
   ImGui::SetNextWindowBgAlpha(0.85f);
   bool dialog_open = true;
-  if (!ImGui::Begin("Performance (P)", &dialog_open,
+  if (!ImGui::Begin("Performance (Right Shift)", &dialog_open,
                     ImGuiWindowFlags_NoCollapse |
                         ImGuiWindowFlags_HorizontalScrollbar)) {
     ImGui::End();
@@ -408,9 +408,28 @@ void EmulatorWindow::PerfDialog::OnDraw(ImGuiIO& io) {
   }
 
   auto& monitor = PerfMonitor::Get();
+
+  // The switch lives here rather than only in the config, so that turning
+  // measurement off is as easy as opening this panel.
+  bool monitor_enabled = PerfMonitor::enabled();
+  if (ImGui::Checkbox("Measure performance", &monitor_enabled)) {
+    monitor.SetEnabled(monitor_enabled);
+  }
+  ImGui::SameLine();
+  ImGui::TextDisabled("(off by default; the setting is saved)");
+  ImGui::Separator();
+
+  if (!monitor_enabled) {
+    ImGui::TextDisabled("Nothing is being measured right now.");
+    ImGui::TextDisabled("Tick the box above to start sampling.");
+    ImGui::End();
+    if (!dialog_open) {
+      Close();
+    }
+    return;
+  }
   if (!monitor.running()) {
     ImGui::TextDisabled("Waiting for the game to present its first frame.");
-    ImGui::TextDisabled("(disabled entirely when perf_monitor = false)");
     ImGui::End();
     if (!dialog_open) {
       Close();
@@ -1233,11 +1252,18 @@ bool EmulatorWindow::Initialize() {
     mods_menu->AddChild(
         MenuItem::Create(MenuItem::Type::kString, "&Mods Panel", "M",
                          std::bind(&EmulatorWindow::ToggleModsDialog, this)));
-    mods_menu->AddChild(
-        MenuItem::Create(MenuItem::Type::kString, "&Performance", "P",
-                         std::bind(&EmulatorWindow::TogglePerfDialog, this)));
   }
   main_menu->AddChild(std::move(mods_menu));
+
+  // Performance menu. Kept out of Mods so that the panel - and with it the
+  // switch that turns sampling on and off - is always one click away.
+  auto perf_menu = MenuItem::Create(MenuItem::Type::kPopup, "&Performance");
+  {
+    perf_menu->AddChild(MenuItem::Create(
+        MenuItem::Type::kString, "&Performance Panel", "Right Shift",
+        std::bind(&EmulatorWindow::TogglePerfDialog, this)));
+  }
+  main_menu->AddChild(std::move(perf_menu));
 
   // XMP menu
   auto xmp_menu = MenuItem::Create(MenuItem::Type::kPopup, "&XMP");
@@ -1475,7 +1501,9 @@ void EmulatorWindow::OnKeyDown(ui::KeyEvent& e) {
     case ui::VirtualKey::kM: {
       ToggleModsDialog();
     } break;
-    case ui::VirtualKey::kP: {
+    // Right shift only - the left one stays free for the guest and for
+    // ImGui's own shift handling.
+    case ui::VirtualKey::kRShift: {
       TogglePerfDialog();
     } break;
     case ui::VirtualKey::kOem3: {
