@@ -6,17 +6,17 @@
 
 Thanks [LEGO Dimensions Discord](https://discord.gg/PuXpBMFE4P) for support!
 
-### Gameplay demo
+## Video guide
 
 <p align="center">
-    <a href="https://youtu.be/coj2Zw3jy1o">
-        <img src="https://img.youtube.com/vi/coj2Zw3jy1o/maxresdefault.jpg" width="640" alt="LEGO Dimensions running on the Xenia Seamless Toypad Build — gameplay demo" />
+    <a href="https://youtube.com/watch?v=RPRY2tEzZt4">
+        <img src="https://img.youtube.com/vi/RPRY2tEzZt4/maxresdefault.jpg" width="640" alt="Lego Dimensions Xenia Emulator Setup 2026 (Xbox 360 Emulator)" />
     </a>
 </p>
 
-<p align="center"><i>Click to watch on YouTube.</i></p>
+<p align="center"><i>Click on image to watch on YouTube.</i></p>
 
-### What this fork adds
+## What this fork adds
 
 - **Emulated ToyPad** (`src/xenia/hid/portal/emulated_toypad.*`) — a complete software implementation of the LEGO Dimensions portal: crypto handshake, tag reads/writes, LED commands. The game detects it as real hardware. Protocol logic is ported from RPCS3's `dimensions_toypad`.
 - **Companion app support** — a loopback TCP listener (127.0.0.1:9191, same wire contract as the Cemu / RPCS3 / shadPS4 seamless builds) lets the [LegoToypad](https://github.com/harrysof/LegoToypad) overlay app place, move and remove characters while the game is running.
@@ -28,7 +28,7 @@ Thanks [LEGO Dimensions Discord](https://discord.gg/PuXpBMFE4P) for support!
 - **`Display > Toggle 60 FPS Unlock` menu** — runs the game at 60 FPS by doubling the emulated vblank rate (the same approach RPCS3 uses for the PS3 version). Applies **live**, no restart; toggle again to go back to 30. Note: the emulator is demanding — if your PC can't hold a stable 60, use a frame-generation tool (e.g. Lossless Scaling / LSFG) instead.
 - **Stability fixes** — the toypad response queue is bounded (fixes a memory leak during long sessions), and the bundled config ships the correct GPU readback settings for the TT Games engine (without them the picture accumulates artifacts within seconds).
 
-### Quick start
+## Quick start
 
 1. Grab the [latest release](https://github.com/NeverCookFirst/Xenia-Seamless-Toypad-Build/releases/latest) and follow its install guide (game + DLC + TU23 sources and folder layout are described there).
 2. Launch the game — the title bar should read `v0.0.23.3` (update applied), let it install its data when asked.
@@ -36,7 +36,7 @@ Thanks [LEGO Dimensions Discord](https://discord.gg/PuXpBMFE4P) for support!
 
 Known quirks: don't switch the render target path to ROV (the game hangs on loading with it); saves made before the title update may black-screen — start a fresh save.
 
-### Building
+## Building
 
 Same as upstream xenia-canary — see [building](docs/building.md). The toypad code lives in `src/xenia/hid/portal/`. CI builds run via the `Toypad_build.yml` workflow on the `toypad` branch.
 
