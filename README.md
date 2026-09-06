@@ -43,6 +43,13 @@ Known quirks: don't switch the render target path to ROV (the game hangs on load
 
 Same as upstream xenia-canary — see [building](docs/building.md). The toypad code lives in `src/xenia/hid/portal/`. CI builds run via the `Toypad_build.yml` workflow on the `toypad` branch.
 
+## Related
+
+- [Dimensions Recompiled](https://github.com/NeverCookFirst/DimensionsRecomp) — a native PC build of LEGO Dimensions, made by statically recompiling the same Xbox 360 executable this fork emulates.
+- [DimensionsModLoader](https://github.com/NeverCookFirst/DimensionsModLoader) — mod manager for the game's `.DAT` archives.
+- [DimensionsSaveConverter](https://github.com/NeverCookFirst/DimensionsSaveConverter) — moves saves between the console versions.
+- [RPCS3-Seamless-Toypad-Build](https://github.com/NeverCookFirst/RPCS3-Seamless-Toypad-Build) and [shadPS4-Seamless-Toypad-Bridge](https://github.com/NeverCookFirst/shadPS4-Seamless-Toypad-Bridge) — the same toypad idea for the PS3 and PS4 versions.
+
 ---
 
 This is a fork of [Xenia Canary](https://github.com/xenia-canary/xenia-canary), an experimental fork of the [Xenia](https://xenia.jp/) Xbox 360 emulator. Huge thanks to the xenia team — all the heavy lifting is theirs. See the [Xenia Canary wiki](https://github.com/xenia-canary/xenia-canary/wiki) and [FAQ](https://github.com/xenia-canary/xenia-canary/wiki/FAQ) for general emulator questions.
