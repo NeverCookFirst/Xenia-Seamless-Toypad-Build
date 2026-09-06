@@ -49,9 +49,24 @@ class HardwarePortal final : public Portal {
                                 int32_t& read_count) override;
   virtual X_STATUS WriteInternal(std::span<uint8_t> data) override;
 
-  const uint8_t read_endpoint = 0x81;
-  const uint8_t write_endpoint = 0x02;
+  // Endpoint addresses differ per portal (the Skylanders one answers on
+  // 0x81/0x02, the LEGO ToyPad does not), so they are read out of the device's
+  // own descriptor rather than assumed. A wrong guess shows up as
+  // LIBUSB_ERROR_NOT_FOUND on every transfer.
+  bool FindEndpoints(libusb_device_handle* handle);
+
   const uint16_t timeout = 100;
+
+  uint8_t read_endpoint_ = 0;
+  uint8_t write_endpoint_ = 0;
+  int interface_number_ = 0;
+
+  // The Xbox 360 does not hand the portal a bare command frame: it wraps it as
+  // <prefix> <length> 55 ..., the same shape EmulatedToypad detects. Real
+  // hardware speaks the unwrapped 0x55 frame, so the wrapper is stripped on the
+  // way out and put back on the way in. -1 = no write seen yet.
+  int frame_offset_ = -1;
+  uint8_t frame_prefix_byte_ = 0;
 
   libusb_context* context_ = nullptr;
   libusb_device_handle* handle_ = nullptr;
