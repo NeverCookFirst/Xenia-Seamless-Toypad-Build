@@ -72,8 +72,6 @@ DECLARE_uint64(framerate_limit);
 
 DECLARE_bool(readback_memexport);
 
-DECLARE_bool(toypad_emulation);
-
 DECLARE_uint64(perf_monitor_interval);
 DECLARE_bool(perf_log_to_file);
 
@@ -2025,6 +2023,22 @@ void EmulatorWindow::GpuClearCaches() {
 // OVERRIDE_* macros only work in the translation unit that DEFINEs the cvar;
 // these cvars live in the GPU module, so go through the global registry.
 template <typename T>
+static bool GetConfigVarByName(const std::string& name, T& value) {
+  if (!cvar::ConfigVars) {
+    return false;
+  }
+  auto it = cvar::ConfigVars->find(name);
+  if (it == cvar::ConfigVars->end()) {
+    return false;
+  }
+  if (auto* var = dynamic_cast<cvar::ConfigVar<T>*>(it->second)) {
+    value = *var->current_value();
+    return true;
+  }
+  return false;
+}
+
+template <typename T>
 static void OverrideConfigVarByName(const std::string& name, T value) {
   if (!cvar::ConfigVars) {
     return;
@@ -2209,11 +2223,14 @@ void EmulatorWindow::ToggleContentListDialog() {
 void EmulatorWindow::ToggleToypadPassthrough() {
   // The portal backend is chosen once, when InputSystem is constructed, so
   // this only takes effect on the next launch.
-  const bool passthrough = cvars::toypad_emulation;
-  OverrideConfigVarByName<bool>("toypad_emulation", !passthrough);
+  bool emulated = true;
+  if (!GetConfigVarByName<bool>("toypad_emulation", emulated)) {
+    return;
+  }
+  OverrideConfigVarByName<bool>("toypad_emulation", !emulated);
 
   const std::string notification_text =
-      passthrough
+      emulated
           ? "Physical ToyPad enabled. Install the libusb driver for the "
             "portal with Zadig (LEGO READER V2.10, 0E6F:0241), then restart "
             "Xenia."
