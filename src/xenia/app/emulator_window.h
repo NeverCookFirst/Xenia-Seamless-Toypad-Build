@@ -331,6 +331,7 @@ class EmulatorWindow {
   void GpuClearCaches();
   void ToggleDisplayConfigDialog();
   void ToggleControllerVibration();
+  void ToggleToypadPassthrough();
   void ShowCompatibility();
   void ShowFAQ();
   void ShowBuildCommit();

@@ -72,6 +72,8 @@ DECLARE_uint64(framerate_limit);
 
 DECLARE_bool(readback_memexport);
 
+DECLARE_bool(toypad_emulation);
+
 DECLARE_uint64(perf_monitor_interval);
 DECLARE_bool(perf_log_to_file);
 
@@ -1234,6 +1236,10 @@ bool EmulatorWindow::Initialize() {
     hid_menu->AddChild(MenuItem::Create(
         MenuItem::Type::kString, "&Display controller hotkeys", "",
         std::bind(&EmulatorWindow::DisplayHotKeysConfig, this)));
+    hid_menu->AddChild(MenuItem::Create(MenuItem::Type::kSeparator));
+    hid_menu->AddChild(MenuItem::Create(
+        MenuItem::Type::kString, "Toggle &physical ToyPad (USB)", "",
+        std::bind(&EmulatorWindow::ToggleToypadPassthrough, this)));
   }
   main_menu->AddChild(std::move(hid_menu));
 
@@ -2198,6 +2204,24 @@ void EmulatorWindow::ToggleContentListDialog() {
       content_list_dialog_.reset();
     }
   }
+}
+
+void EmulatorWindow::ToggleToypadPassthrough() {
+  // The portal backend is chosen once, when InputSystem is constructed, so
+  // this only takes effect on the next launch.
+  const bool passthrough = cvars::toypad_emulation;
+  OverrideConfigVarByName<bool>("toypad_emulation", !passthrough);
+
+  const std::string notification_text =
+      passthrough
+          ? "Physical ToyPad enabled. Install the libusb driver for the "
+            "portal with Zadig (LEGO READER V2.10, 0E6F:0241), then restart "
+            "Xenia."
+          : "Emulated ToyPad enabled. Restart Xenia to apply.";
+  app_context_.CallInUIThread([this, notification_text]() {
+    new xe::ui::HostNotificationWindow(imgui_drawer(), "ToyPad",
+                                       notification_text, 0);
+  });
 }
 
 void EmulatorWindow::ToggleControllerVibration() {

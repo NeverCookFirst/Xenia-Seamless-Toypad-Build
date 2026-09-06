@@ -41,8 +41,10 @@ DEFINE_double(
 InputSystem::InputSystem(xe::ui::Window* window) : window_(window) {
 #ifdef XE_PLATFORM_WIN32
   if (cvars::toypad_emulation) {
+    XELOGI("Portal: using the emulated ToyPad.");
     portal_ = std::make_unique<EmulatedToypad>();
   } else {
+    XELOGI("Portal: using a physical portal over USB.");
     portal_ = std::make_unique<HardwarePortal>();
   }
 #endif  // XE_PLATFORM_WIN32
