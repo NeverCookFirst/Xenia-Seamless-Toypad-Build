@@ -1,6 +1,6 @@
 <h1 align="center">Xenia Seamless Toypad Build</h1>
 
-<p align="center">A <a href="https://github.com/xenia-canary/xenia-canary">xenia-canary</a> fork with a built-in <b>emulated LEGO Dimensions ToyPad</b> — play the full game with all DLC, Title Update 23 and a 60 FPS unlock, no physical portal needed.</p>
+<p align="center">A <a href="https://github.com/xenia-canary/xenia-canary">xenia-canary</a> fork with a built-in <b>emulated LEGO Dimensions ToyPad</b> — play the full game with all DLC and a 60 FPS unlock, no physical portal needed.</p>
 
 **Download: [latest release](https://github.com/NeverCookFirst/Xenia-Seamless-Toypad-Build/releases/latest)** — the zip ships a preconfigured, portable build. The release notes contain the full step-by-step install guide (game, DLC and title update).
 
@@ -20,7 +20,7 @@ Thanks [LEGO Dimensions Discord](https://discord.gg/PuXpBMFE4P) for support!
 
 - **Emulated ToyPad** (`src/xenia/hid/portal/emulated_toypad.*`) — a complete software implementation of the LEGO Dimensions portal: crypto handshake, tag reads/writes, LED commands. The game detects it as real hardware. Protocol logic is ported from RPCS3's `dimensions_toypad`.
 - **Companion app support** — a loopback TCP listener (127.0.0.1:9191, same wire contract as the Cemu / RPCS3 / shadPS4 seamless builds) lets the [LegoToypad](https://github.com/harrysof/LegoToypad) overlay app place, move and remove characters while the game is running.
-- **Working DLC + Title Update installation.** Regular xenia fails LEGO Dimensions' post-update data install at 96%. Three fixes in this fork make it complete:
+- **Working DLC +  Update installation.** Regular xenia fails LEGO Dimensions' post-update data install at 96%. Three fixes in this fork make it complete:
   - `IoDismountVolume` / `IoDismountVolumeByFileHandle` / `IoDismountVolumeByName` kernel exports are implemented (safe success no-ops) — the game dismounts the content volume to finalize the install.
   - Content package headers are written at creation time instead of on close — the installer enumerates its freshly created `appdata` package while it is still open, matching real hardware behavior.
   - `XamContentCreate` on an already-mapped root name now returns `ERROR_ALREADY_EXISTS` (the XDK-documented code) instead of `ERROR_INVALID_PARAMETER` — the installer re-opens its own open package to validate the install and only continues on that exact code.
