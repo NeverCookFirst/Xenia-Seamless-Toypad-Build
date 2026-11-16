@@ -70,3 +70,10 @@ Same as upstream xenia-canary — see [building](docs/building.md). The toypad c
 ---
 
 This is a fork of [Xenia Canary](https://github.com/xenia-canary/xenia-canary), an experimental fork of the [Xenia](https://xenia.jp/) Xbox 360 emulator. Huge thanks to the xenia team — all the heavy lifting is theirs. See the [Xenia Canary wiki](https://github.com/xenia-canary/xenia-canary/wiki) and [FAQ](https://github.com/xenia-canary/xenia-canary/wiki/FAQ) for general emulator questions.
+
+## Dimensions Recompiled handoff
+
+I have ended my work on Dimensions Recompiled. This repository is preserved as a read-only reference. The existing source and any release downloads remain available.
+
+- [Final Native GPU release](https://github.com/NeverCookFirst/DimensionsRecomp/releases/tag/v0.2.0)
+- [Project handoff and original build](https://github.com/NeverCookFirst/DimensionsRecomp/blob/main/PROJECT-HANDOFF.md)
